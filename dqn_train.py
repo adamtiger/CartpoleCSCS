@@ -228,10 +228,52 @@ class DqnHigh(DqnBase):
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
     # ------------------------------------------------------
+    # format: [exp1, exp2, exp3 ...] exp1 = (obs_t, rw, action, done, obs_t+1)
+    # obs_t is a numpy array with shape: (84 x 84 x 4)
     def append(self, experiences):
+
+        pos = 0
         if len(self.buffer) + len(experiences) > self.buffer_size:
             idx = len(self.buffer) + len(experiences) - self.buffer_size
             del self.buffer[0:idx]
+        elif len(self.buffer) == 0:
+            if len(experiences) >= 4:
+                obs = np.zeros((84, 84, 4), dtype=np.uint8)
+                obs[:, :, 0] = experiences[0][0][:, :, 0]
+                obs[:, :, 1] = experiences[1][0][:, :, 0]
+                obs[:, :, 2] = experiences[2][0][:, :, 0]
+                obs[:, :, 3] = experiences[3][0][:, :, 0]
+
+                obs_nx = np.zeros((84, 84, 4), dtype=np.uint8)
+                obs_nx[:, :, 0] = experiences[0][4][:, :, 0]
+                obs_nx[:, :, 1] = experiences[1][4][:, :, 0]
+                obs_nx[:, :, 2] = experiences[2][4][:, :, 0]
+                obs_nx[:, :, 3] = experiences[3][4][:, :, 0]
+
+                exp = (obs, experiences[3][1], experiences[3][2], experiences[3][3], obs_nx)
+                self.buffer.append(exp)
+                pos += 4 # four element is already used
+            else:
+                err_msg = 'There is no enough experience to create a sample!'
+                self.log.log(Mode.LOG_F, 'Error: ' + err_msg)
+                raise AttributeError(err_msg)
+
+        while pos < len(experiences):
+            exp = self.buffer[-1]
+            obs = np.zeros((84, 84, 4), dtype=np.uint8)
+            obs[:, :, 1:4] = exp[0][:, :, 0:3]
+            obs[:, :, 3] = experiences[pos][0][:, :, 3]
+
+            obs_nx = np.zeros((84, 84, 4), dtype=np.uint8)
+            obs_nx[:, :, 0:3] = exp[4][:, :, 0:3]
+            obs_nx[:, :, 3] = experiences[pos][3][3][:, :, 3]
+
+            stacked_exp = (obs, experiences[pos][1], experiences[pos][2], experiences[pos][3], obs_nx)
+            self.buffer.append(stacked_exp)
+            pos += 1
 
 
-        self.buffer += experiences
+
+
+
+
