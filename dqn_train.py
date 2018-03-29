@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import random
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Convolution2D, Flatten
 from keras.optimizers import Adam, SGD, RMSprop
 from dataprovider import Optimizer as opt
 from log import Logger, Mode
@@ -22,7 +22,7 @@ class DqnBase:
         self.train_freq = params.train_freq
         self.eval_freq = params.eval_freq
 
-        self.q_cont, self.q_frzn = self.__init_models(params)
+        self.q_cont, self.q_frzn = None, None
 
         self.buffer = []
         self.log = Logger(params)
@@ -163,25 +163,7 @@ class DqnBase:
 
     def __init_models(self, params):
 
-        structure = params.net
-
-        def build(strc):
-            q = Sequential()
-            q.add(Dense(strc[0][0], input_shape=(4,), activation=strc[0][1]))
-
-            for i in range(1, len(strc)):
-                q.add(Dense(strc[i][0], activation=strc[i][1]))
-
-            optz = self.__init_optimizer(params)
-            q.compile(loss='mse', optimizer=optz)
-            return q
-
-        q_cont = build(structure)
-        q_frzn = build(structure)
-
-        q_cont.set_weights(q_frzn.get_weights())
-
-        return q_cont, q_frzn
+        return
 
     def __init_buffer(self, number):
 
@@ -206,6 +188,7 @@ class DqnLow(DqnBase):
 
         super().__init__(params)
         self.env = gym.make('CartPole-v0')
+        self.q_cont, self.q_frzn = self.__init_models(params)
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
@@ -217,6 +200,30 @@ class DqnLow(DqnBase):
 
         self.buffer += experiences
 
+    def __init_models(self, params):
+
+        structure = params.net
+
+        def build(strc):
+            q = Sequential()
+            q.add(Dense(strc[0][0], input_shape=(4,), activation=strc[0][1]))
+
+            for i in range(1, len(strc)-1):
+                q.add(Dense(strc[i][0], activation=strc[i][1]))
+
+            q.add(Dense(2, activation=strc[-1][1]))
+
+            optz = self.__init_optimizer(params)
+            q.compile(loss='mse', optimizer=optz)
+            return q
+
+        q_cont = build(structure)
+        q_frzn = build(structure)
+
+        q_cont.set_weights(q_frzn.get_weights())
+
+        return q_cont, q_frzn
+
 
 class DqnHigh(DqnBase):
 
@@ -224,6 +231,7 @@ class DqnHigh(DqnBase):
 
         super().__init__(params)
         self.env = gym.make('CartPoleRawImg-v0')
+        self.q_cont, self.q_frzn = self.__init_models(params)
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
@@ -272,8 +280,27 @@ class DqnHigh(DqnBase):
             self.buffer.append(stacked_exp)
             pos += 1
 
+    def __init_models(self, params):
 
+        structure = params.net
 
+        def build(strc):
+            q = Sequential()
+            q.add(Convolution2D(strc[0][0], kernel_size=(3, 3), padding='valid', input_shape=(84, 84, 4), activation=strc[0][1]))
 
+            for i in range(1, len(strc)-1):  # the last should be a Dense
+                q.add(Convolution2D(strc[i][0], kernel_size=(3, 3), padding='valid', activation=strc[i][1]))
 
+            q.add(Flatten())
+            q.add(Dense(2, activation=strc[-1][1]))
 
+            optz = self.__init_optimizer(params)
+            q.compile(loss='mse', optimizer=optz)
+            return q
+
+        q_cont = build(structure)
+        q_frzn = build(structure)
+
+        q_cont.set_weights(q_frzn.get_weights())
+
+        return q_cont, q_frzn
