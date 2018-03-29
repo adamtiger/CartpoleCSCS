@@ -8,11 +8,10 @@ from dataprovider import Optimizer as opt
 from log import Logger, Mode
 
 
-class DqnLow:
+class DqnBase:
 
     def __init__(self, params):
-
-        self.env = gym.make('CartPole-v0')
+        self.env = None
         self.buffer_size = params.buf_size
         self.batch_size = params.batch
         self.epoch = params.epoch
@@ -28,9 +27,6 @@ class DqnLow:
         self.buffer = []
         self.log = Logger(params)
 
-    # ------------------------------------------------------
-    # Training function
-    # ------------------------------------------------------
     def train_function(self):
 
         self.log.log(Mode.STD_LOG, "Initialization was finished.")
@@ -127,30 +123,10 @@ class DqnLow:
         self.buffer.clear()
 
     def append(self, experiences):
-        if len(self.buffer) + len(experiences) > self.buffer_size:
-            idx = len(self.buffer) + len(experiences) - self.buffer_size
-            del self.buffer[0:idx]
-
-        self.buffer += experiences
+        return
 
     def sample(self, number):
-        exps = random.sample(self.buffer, number)  # experiences list
-        obs = np.stack([x[0] for x in exps], axis=0)
-        rws = np.array([x[1] for x in exps])
-        acts = np.array([x[2] for x in exps])
-        dones = np.array([x[3] for x in exps])
-        next_obs = np.stack([x[4] for x in exps], axis=0)
-
-        q_cont_vals = self.q_cont.predict(obs, batch_size=number)  # (batch_size, 2)
-        q_frzn_vals = self.q_frzn.predict(next_obs, batch_size=number)
-
-        sub_values = rws + self.gamma * (1 - dones) * np.max(q_frzn_vals, axis=1)
-
-        q_cont_vals[list(range(number)), acts] = sub_values  # this will be the target in the network
-
-        x = obs
-        y = q_cont_vals
-        return x, y
+        return None, None
 
     # ------------------------------------------------------
     # Functions for action selections
@@ -183,7 +159,7 @@ class DqnLow:
         elif params.opt == opt.RMSPROP:
             optz = RMSprop(params.lr)
 
-        return optz
+            return optz
 
     def __init_models(self, params):
 
@@ -222,3 +198,40 @@ class DqnLow:
             obs = obs_next
 
         self.append(exps)
+
+
+class DqnLow(DqnBase):
+
+    def __init__(self, params):
+
+        super().__init__(params)
+        self.env = gym.make('CartPole-v0')
+
+    # ------------------------------------------------------
+    # Functions for handling the buffer (experience replay)
+    # ------------------------------------------------------
+    def append(self, experiences):
+        if len(self.buffer) + len(experiences) > self.buffer_size:
+            idx = len(self.buffer) + len(experiences) - self.buffer_size
+            del self.buffer[0:idx]
+
+        self.buffer += experiences
+
+
+class DqnHigh(DqnBase):
+
+    def __init__(self, params):
+
+        super().__init__(params)
+        self.env = gym.make('CartPoleRawImg-v0')
+
+    # ------------------------------------------------------
+    # Functions for handling the buffer (experience replay)
+    # ------------------------------------------------------
+    def append(self, experiences):
+        if len(self.buffer) + len(experiences) > self.buffer_size:
+            idx = len(self.buffer) + len(experiences) - self.buffer_size
+            del self.buffer[0:idx]
+
+
+        self.buffer += experiences
