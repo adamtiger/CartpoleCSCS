@@ -53,7 +53,7 @@ def data_for_low():
         p.log_file = log_folder + str(id) + "_log_low.log"
         p.log_loss_name = log_folder + str(id) + "_loss_low.csv"
         p.log_return_name = log_folder + str(id) + "_return_low.csv"
-        p.w_file_name = weight_folder + str(id) + "weights_low.h5"
+        p.w_file_name = weight_folder + str(id) + "_weights_low.h5"
 
         data.append(p)
     return data
@@ -77,7 +77,7 @@ def data_for_high():
         p.log_file = log_folder + str(id) + "_log_high.log"
         p.log_loss_name = log_folder + str(id) + "_loss_high.csv"
         p.log_return_name = log_folder + str(id) + "_return_high.csv"
-        p.w_file_name = weight_folder + str(id) + "weights_high.h5"
+        p.w_file_name = weight_folder + str(id) + "_weights_high.h5"
 
         data.append(p)
     return data

@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from skimage import transform as trf
 import random
 from keras.models import Sequential
 from keras.layers import Dense, Convolution2D, Flatten
@@ -11,6 +12,7 @@ from log import Logger, Mode
 class DqnBase:
 
     def __init__(self, params):
+        self.process_id = params.id
         self.env = None
         self.buffer_size = params.buf_size
         self.batch_size = params.batch
@@ -22,6 +24,9 @@ class DqnBase:
         self.train_freq = params.train_freq
         self.eval_freq = params.eval_freq
         self.weight_file_name = params.w_file_name
+        self.net = params.net
+        self.lr = params.lr
+        self.opt = params.opt
 
         self.q_cont, self.q_frzn = None, None
 
@@ -30,11 +35,14 @@ class DqnBase:
 
     def train_function(self):
 
+        self._init_buffer(self.batch_size)
+
         self.log.log(Mode.STD_LOG, "Initialization was finished.")
         self.log.log(Mode.STD_LOG, "Training was started.")
 
-        ep_id = 0
+        ep_id = 1
         cntr = 0
+        eval_permitted = True
         rtn = 0
         exps = []
 
@@ -47,9 +55,12 @@ class DqnBase:
             cntr += 1
 
             if done:
-                self.log.log(Mode.LOG_F, 'Episode: ' + str(ep_id) + ' return: ' + str(rtn))
+                if ep_id % 10 == 0:
+                    self.log.log(Mode.STDOUT, 'Proc.Id: ' + str(self.process_id) + ' ' + str(ep_id))
+                    self.log.log(Mode.LOG_F, 'Episode: ' + str(ep_id) + ' return: ' + str(rtn))
                 rtn = 0
                 ep_id += 1
+                eval_permitted = True
                 obs = self.env.reset()
 
             action = self.select_action_epsilon(obs, eps)
@@ -78,9 +89,10 @@ class DqnBase:
             if cntr % self.C == 0:
                 self.q_frzn.set_weights(self.q_cont.get_weights())
 
-            if ep_id % self.eval_freq == 0:
+            if ep_id % self.eval_freq == 0 and eval_permitted:
                 r = self.evaluation()
                 self.log.log(Mode.RET_F, [cntr, ep_id, r])
+                eval_permitted = False
 
             eps = max(eps - 0.001, 0.001)
 
@@ -90,12 +102,14 @@ class DqnBase:
     def evaluation(self):
 
         def avg(alist):
-            n = alist.count()
+            n = len(alist)
             szum = 0
             for x in alist:
                 szum += x
 
             return float(szum) / n
+
+        self.log.log(Mode.STDOUT, 'Proc.Id: ' + str(self.process_id) + ' - evaluation started.')
 
         obs = self.env.reset()
         done = False
@@ -113,7 +127,6 @@ class DqnBase:
 
             action = self.select_action(obs)
             obs, rw, done, _ = self.env.step(action)
-            self.env.render()
             rtn += rw
 
         return avg(rtns)
@@ -128,7 +141,24 @@ class DqnBase:
         return
 
     def sample(self, number):
-        return None, None
+        exps = random.sample(self.buffer, number)  # experiences list
+        obs = np.stack([x[0] for x in exps], axis=0)
+        rws = np.array([x[1] for x in exps])
+        acts = np.array([x[2] for x in exps])
+        dones = np.array([x[3] for x in exps])
+        next_obs = np.stack([x[4] for x in exps], axis=0)
+
+        q_vals = self.q_cont.predict(obs, batch_size=number)  # (batch_size, 2)
+        fzn_q_vals = self.q_frzn.predict(next_obs, batch_size=number)
+
+        sub_values = rws + self.gamma * (1 - dones) * np.max(fzn_q_vals, axis=1)
+
+        q_vals[list(range(number)), acts] = sub_values  # this will be the target in the network
+
+        x = obs
+        y = q_vals
+
+        return x, y
 
     # ------------------------------------------------------
     # Functions for action selections
@@ -149,23 +179,23 @@ class DqnBase:
     # ------------------------------------------------------
     # Helper functions for initialization tasks
 
-    def __init_optimizer(self, params):
+    def _init_optimizer(self):
 
         optz = None
-        if params.opt == opt.ADAM:
-            optz = Adam(params.lr)
-        elif params.opt == opt.SGD:
-            optz = SGD(params.lr)
-        elif params.opt == opt.RMSPROP:
-            optz = RMSprop(params.lr)
+        if self.opt == opt.ADAM:
+            optz = Adam(self.lr)
+        elif self.opt == opt.SGD:
+            optz = SGD(self.lr)
+        elif self.opt == opt.RMSPROP:
+            optz = RMSprop(self.lr)
 
-            return optz
+        return optz
 
-    def __init_models(self, params):
+    def _init_models(self):
 
         return
 
-    def __init_buffer(self, number):
+    def _init_buffer(self, number):
 
         exps = []
         obs, rw, done, _ = self.env.step(0)
@@ -188,7 +218,8 @@ class DqnLow(DqnBase):
 
         super().__init__(params)
         self.env = gym.make('CartPole-v0')
-        self.q_cont, self.q_frzn = self.__init_models(params)
+        self.env.reset()
+        self.q_cont, self.q_frzn = self._init_models()
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
@@ -200,9 +231,7 @@ class DqnLow(DqnBase):
 
         self.buffer += experiences
 
-    def __init_models(self, params):
-
-        structure = params.net
+    def _init_models(self):
 
         def build(strc):
             q = Sequential()
@@ -213,12 +242,12 @@ class DqnLow(DqnBase):
 
             q.add(Dense(2, activation=strc[-1][1]))
 
-            optz = self.__init_optimizer(params)
+            optz = self._init_optimizer()
             q.compile(loss='mse', optimizer=optz)
             return q
 
-        q_cont = build(structure)
-        q_frzn = build(structure)
+        q_cont = build(self.net)
+        q_frzn = build(self.net)
 
         q_cont.set_weights(q_frzn.get_weights())
 
@@ -231,7 +260,8 @@ class DqnHigh(DqnBase):
 
         super().__init__(params)
         self.env = gym.make('CartPoleRawImg-v0')
-        self.q_cont, self.q_frzn = self.__init_models(params)
+        self.env.reset()
+        self.q_cont, self.q_frzn = self._init_models()
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
@@ -239,6 +269,20 @@ class DqnHigh(DqnBase):
     # format: [exp1, exp2, exp3 ...] exp1 = (obs_t, rw, action, done, obs_t+1)
     # obs_t is a numpy array with shape: (84 x 84 x 4)
     def append(self, experiences):
+
+        def preprocess(alist):
+
+            transformed_list = []
+            for pic in alist:
+                pic0 = pic[40:124, :]
+                pic1 = np.zeros((pic0.shape[0], pic0.shape[1], 1))
+                pic1[:, :] = pic0[:, :, 0] * 0.2126 + pic0[:, :, 1] * 0.7152 + pic0[:, :, 2] * 0.0722
+                pic2 = trf.resize(pic1, (84, 84, 1))
+                transformed_list.append(pic2)
+
+            return transformed_list
+
+        experiences = preprocess(experiences)
 
         pos = 0
         if len(self.buffer) + len(experiences) > self.buffer_size:
@@ -280,9 +324,7 @@ class DqnHigh(DqnBase):
             self.buffer.append(stacked_exp)
             pos += 1
 
-    def __init_models(self, params):
-
-        structure = params.net
+    def _init_models(self):
 
         def build(strc):
             q = Sequential()
@@ -294,12 +336,12 @@ class DqnHigh(DqnBase):
             q.add(Flatten())
             q.add(Dense(2, activation=strc[-1][1]))
 
-            optz = self.__init_optimizer(params)
+            optz = self._init_optimizer()
             q.compile(loss='mse', optimizer=optz)
             return q
 
-        q_cont = build(structure)
-        q_frzn = build(structure)
+        q_cont = build(self.net)
+        q_frzn = build(self.net)
 
         q_cont.set_weights(q_frzn.get_weights())
 

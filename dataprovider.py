@@ -24,6 +24,7 @@ class Parameters:
         self.train_freq = None
         self.eval_freq = None
         self.net = None
+        self.lr = None
         self.opt = None
         self.log_file = None
         self.log_return_name = None
@@ -52,6 +53,7 @@ class DataProvider:
         p.C = self.df.iloc[id]['C']
         p.train_freq = self.df.iloc[id]['train_freq']
         p.eval_freq = self.df.iloc[id]['eval_freq']
+        p.lr = self.df.iloc[id]['lr']
 
         n = self.df.iloc[id]['n']
         net = []

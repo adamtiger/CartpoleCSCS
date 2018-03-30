@@ -20,10 +20,10 @@ class Mode(Enum):
 class Logger:
 
     def __init__(self, params):
-        self.log_file = open(params.log_file_name, 'a')
-        self.loss_csv = open(params.log_loss_name, 'a', newline='')
+        self.log_file = open(params.log_file, 'a', buffering=1)
+        self.loss_csv = open(params.log_loss_name, 'a', newline='', buffering=1)
         self.loss_csv_obj = csv.writer(self.loss_csv)
-        self.return_csv = open(params.log_return_name, 'a', newline='')
+        self.return_csv = open(params.log_return_name, 'a', newline='', buffering=1)
         self.return_csv_obj = csv.writer(self.return_csv)
 
         self.log_funcs = [self.__log_STDOUT,
