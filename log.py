@@ -50,6 +50,7 @@ class Logger:
         self.loss_csv.close()
         self.return_csv.close()
 
+    # -----------------------------------
     # Private functions.
 
     def __log_STDOUT(self, mode, msg):

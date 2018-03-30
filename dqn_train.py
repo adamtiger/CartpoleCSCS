@@ -21,6 +21,7 @@ class DqnBase:
         self.C = params.C
         self.train_freq = params.train_freq
         self.eval_freq = params.eval_freq
+        self.weight_file_name = params.w_file_name
 
         self.q_cont, self.q_frzn = None, None
 
@@ -83,7 +84,8 @@ class DqnBase:
 
             eps = max(eps - 0.001, 0.001)
 
-            self.log.log(Mode.STD_LOG, "Training was finished.")
+        self.q_cont.save_weights(self.weight_file_name)
+        self.log.log(Mode.STD_LOG, "Training was finished.")
 
     def evaluation(self):
 
@@ -118,7 +120,7 @@ class DqnBase:
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
-    # ------------------------------------------------------
+
     def clear_buffer(self):
         self.buffer.clear()
 
@@ -130,7 +132,6 @@ class DqnBase:
 
     # ------------------------------------------------------
     # Functions for action selections
-    # ------------------------------------------------------
 
     # with epsilon-greedy
     def select_action_epsilon(self, state, eps):  # state shape: (4) nunmpy array
@@ -147,7 +148,6 @@ class DqnBase:
 
     # ------------------------------------------------------
     # Helper functions for initialization tasks
-    # ------------------------------------------------------
 
     def __init_optimizer(self, params):
 
@@ -192,7 +192,7 @@ class DqnLow(DqnBase):
 
     # ------------------------------------------------------
     # Functions for handling the buffer (experience replay)
-    # ------------------------------------------------------
+
     def append(self, experiences):
         if len(self.buffer) + len(experiences) > self.buffer_size:
             idx = len(self.buffer) + len(experiences) - self.buffer_size

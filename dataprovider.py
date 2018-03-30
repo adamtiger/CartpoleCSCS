@@ -13,6 +13,7 @@ class Parameters:
 
     def __init__(self):
 
+        self.id = None
         self.buf_size = None
         self.batch = None
         self.epoch = None
@@ -24,6 +25,10 @@ class Parameters:
         self.eval_freq = None
         self.net = None
         self.opt = None
+        self.log_file = None
+        self.log_return_name = None
+        self.log_loss_name = None
+        self.w_file_name = None
 
 
 class DataProvider:
@@ -31,11 +36,13 @@ class DataProvider:
     def __init__(self, file_name):
 
         self.df = pd.read_csv(file_name)
+        self.num_records = len(self.df.index)
 
     def process_row(self, id):
 
         p = Parameters()
 
+        p.id = id
         p.buf_size = self.df.iloc[id]['buf_size']
         p.batch = self.df.iloc[id]['batch']
         p.epoch = self.df.iloc[id]['epoch']
