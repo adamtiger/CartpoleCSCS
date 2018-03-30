@@ -94,7 +94,7 @@ class DqnBase:
                 self.log.log(Mode.RET_F, [cntr, ep_id, r])
                 eval_permitted = False
 
-            eps = max(eps - 0.001, 0.001)
+            eps = max(eps - 0.0001, 0.1)
 
         self.q_cont.save_weights(self.weight_file_name)
         self.log.log(Mode.STD_LOG, "Training was finished.")
@@ -155,8 +155,8 @@ class DqnBase:
 
         q_vals[list(range(number)), acts] = sub_values  # this will be the target in the network
 
-        x = obs
-        y = q_vals
+        x = obs.astype(dtype=np.float32)
+        y = q_vals.astype(dtype=np.float32)
 
         return x, y
 
