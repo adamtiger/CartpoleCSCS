@@ -16,7 +16,7 @@ def process_results_of_run(folder):
     
     rtn_values = []
     for id in range(num_fls):
-       name = path + '/' + str(id) + '_return_high.csv'
+       name = path + '/' + str(id) + '_return_low.csv'
        rtn_values.append((id, maximum(name)))
 
     return rtn_values
@@ -67,7 +67,7 @@ def create_bar_plot():
 
 
 def create_learning_plot():
-    folder = 'run5_img'
+    folder = 'run4'
     x = process_results_of_run(folder)
 
     maximum = [0, 0]
@@ -76,15 +76,17 @@ def create_learning_plot():
             maximum[1] = e[1]
             maximum[0] = e[0]
 
-    path = folder + '/logfiles/' + str(maximum[0]) + '_train_ret_high.csv'
+    path = folder + '/logfiles/' + str(maximum[0]) + '_train_ret_low.csv'
     df = pd.read_csv(path, header=None, names=['itr', 'ep', 'rtn'])
 
     plt.xlabel('Episode')
     plt.ylabel('Returns')
-    plt.title('Learning curve for high')
+    plt.title('Learning curve for low')
 
     plt.plot(df['ep'].as_matrix(), df['rtn'].as_matrix())
     plt.show()
+
+    print(str(maximum[0]))
 
 #create_bar_plot()
 create_learning_plot()
