@@ -51,7 +51,7 @@ def data_for_low():
     for id in range(provider.num_records):
         p = provider.process_row(id)
         p.log_file = log_folder + str(id) + "_log_low.log"
-        p.log_loss_name = log_folder + str(id) + "_loss_low.csv"
+        p.log_train_ret_name = log_folder + str(id) + "_train_ret_low.csv"
         p.log_return_name = log_folder + str(id) + "_return_low.csv"
         p.w_file_name = weight_folder + str(id) + "_weights_low.h5"
 
@@ -68,6 +68,7 @@ def process_of_low(params):
 # Mode 2: CartPole with high level state
 
 def data_for_high():
+
     provider = dp.DataProvider(high_params)
 
     data = []
@@ -75,7 +76,7 @@ def data_for_high():
     for id in range(provider.num_records):
         p = provider.process_row(id)
         p.log_file = log_folder + str(id) + "_log_high.log"
-        p.log_loss_name = log_folder + str(id) + "_loss_high.csv"
+        p.log_train_ret_name = log_folder + str(id) + "_train_ret_high.csv"
         p.log_return_name = log_folder + str(id) + "_return_high.csv"
         p.w_file_name = weight_folder + str(id) + "_weights_high.h5"
 

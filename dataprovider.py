@@ -28,7 +28,7 @@ class Parameters:
         self.opt = None
         self.log_file = None
         self.log_return_name = None
-        self.log_loss_name = None
+        self.log_train_ret_name = None
         self.w_file_name = None
 
 

@@ -58,6 +58,7 @@ class DqnBase:
                 if ep_id % 10 == 0:
                     self.log.log(Mode.STDOUT, 'Proc.Id: ' + str(self.process_id) + ' ' + str(ep_id))
                     self.log.log(Mode.LOG_F, 'Episode: ' + str(ep_id) + ' return: ' + str(rtn))
+                    self.log.log(Mode.TRAIN_RET_F, [cntr, ep_id, rtn])
                 rtn = 0
                 ep_id += 1
                 eval_permitted = True
@@ -93,8 +94,10 @@ class DqnBase:
                 r = self.evaluation()
                 self.log.log(Mode.RET_F, [cntr, ep_id, r])
                 eval_permitted = False
+                if r >= 190:
+                    break
 
-            eps = max(eps - 0.0001, 0.1)
+            eps = max(eps - 0.001, 0.01)
 
         self.q_cont.save_weights(self.weight_file_name)
         self.log.log(Mode.STD_LOG, "Training was finished.")
